@@ -1844,12 +1844,14 @@
       document.getElementById("pageFifteenResponse").textContent = "Of course. Take all the time you need. Nothing changes, and there is no rush. ♡";
     });
 
+    const pageTwelveAnswers = {};
     document.querySelectorAll(".page-twelve-question").forEach((question) => {
       const questionKey = question.dataset.question;
       const feedback = question.querySelector(".page-twelve-feedback");
       question.querySelectorAll("button[data-answer]").forEach((button) => {
         button.addEventListener("click", () => {
           const answer = button.dataset.answer;
+          pageTwelveAnswers[questionKey] = answer;
           question.querySelectorAll("button[data-answer]").forEach((choice) => {
             choice.setAttribute("aria-pressed", String(choice === button));
           });
@@ -1867,8 +1869,25 @@
     });
 
 
-    // Add Amjad's receiving email address here to activate the send-by-email link.
-    const ANSWER_RECIPIENT_EMAIL = "";
+    // Formspree sends submitted answers to the notification email configured in its dashboard.
+    const FORMSPREE_ENDPOINT = "https://formspree.io/f/moeebkkr";
+    async function sendProposalResponse(fields) {
+      const formData = new FormData();
+      Object.entries(fields).forEach(([key, value]) => {
+        formData.append(key, typeof value === "string" ? value : JSON.stringify(value));
+      });
+      const response = await fetch(FORMSPREE_ENDPOINT, {
+        method: "POST",
+        body: formData,
+        headers: { Accept: "application/json" }
+      });
+      if (!response.ok) {
+        let detail = "";
+        try { detail = (await response.json()).errors?.map(error => error.message).join(" ") || ""; } catch (_) {}
+        throw new Error(detail || "Your response could not be sent. Please try again.");
+      }
+      return true;
+    }
     let selectedPictureAnswer = null;
     const pictureResponse = document.getElementById("pictureResponse");
     const pictureResponseTitle = document.getElementById("pictureResponseTitle");
@@ -1885,16 +1904,8 @@
       pictureResponseBody.textContent = answer === "YES"
         ? "Then it's a date. Let's take our picture together and save it somewhere special."
         : "That's completely okay. Thank you for answering honestly; there is no pressure at all.";
-      if (ANSWER_RECIPIENT_EMAIL.trim()) {
-        const subject = "Hassaneh's answer about our picture";
-        const body = `Hassaneh selected: ${answer}\n\n${answer === "YES" ? "She would like us to take a picture together and save it on our phones or as our chat wallpaper." : "She selected no for taking a picture like this."}`;
-        pictureEmailLink.href = `mailto:${encodeURIComponent(ANSWER_RECIPIENT_EMAIL.trim())}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-        pictureEmailLink.hidden = false;
-        pictureEmailNote.textContent = "This opens a prefilled email on her device. She will need to press Send.";
-      } else {
-        pictureEmailLink.hidden = true;
-        pictureEmailNote.textContent = "The email option will be enabled once Amjad adds the address where he wants to receive your answer.";
-      }
+      pictureEmailLink.hidden = true;
+      pictureEmailNote.textContent = "Your answer will be included in the response sent to Amjad when you submit your final answer. ♡";
     }
     document.getElementById("pictureYes").addEventListener("click", () => choosePictureAnswer("YES"));
     document.getElementById("pictureNo").addEventListener("click", () => choosePictureAnswer("NO"));
@@ -1905,7 +1916,6 @@
     const wishText = document.getElementById("wishText");
     const wishSubmitButton = document.getElementById("wishSubmitButton");
     const wishStatus = document.getElementById("wishStatus");
-    const wishEmailLink = document.getElementById("wishEmailLink");
     const continueAfterWish = document.getElementById("continueAfterWish");
 
     wishText.addEventListener("input", () => {
@@ -1924,20 +1934,24 @@
         return;
       }
       wishText.setCustomValidity("");
-      if (ANSWER_RECIPIENT_EMAIL.trim()) {
-        const subject = "Hassaneh's genuine wish for Amjad";
-        const body = `Hassaneh's wish:\n\n${wish}\n\nSent from the proposal page.`;
-        wishEmailLink.href = `mailto:${encodeURIComponent(ANSWER_RECIPIENT_EMAIL.trim())}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-        wishEmailLink.hidden = false;
-        wishEmailLink.textContent = "Open the prepared email to Amjad";
-        wishEmailLink.click();
-        wishStatus.textContent = "Your wish is in a prefilled email draft. Please press Send in your email app so Amjad receives it. ♡";
-      } else {
-        wishStatus.textContent = "Your wish is written here, but email delivery is not configured yet. Amjad needs to add his receiving email address to ANSWER_RECIPIENT_EMAIL in the page script before this can be emailed.";
+      wishSubmitButton.disabled = true;
+      wishSubmitButton.textContent = "Sending…";
+      wishStatus.textContent = "Sending your wish to Amjad… ♡";
+      try {
+        await sendProposalResponse({
+          _subject: "Hassaneh's genuine wish for Amjad",
+          response_type: "Wish submission",
+          wish: wish
+        });
+        wishStatus.textContent = "Your wish has been sent to Amjad. ♡";
+        wishSubmitButton.textContent = "Wish sent ♡";
+        continueAfterWish.disabled = false;
+        continueAfterWish.textContent = "Continue to the promises →";
+      } catch (error) {
+        wishStatus.textContent = error.message + " You can try submitting again.";
+        wishSubmitButton.disabled = false;
+        wishSubmitButton.textContent = "Submit my wish ♡";
       }
-      wishSubmitButton.textContent = "Wish ready ♡";
-      continueAfterWish.disabled = false;
-      continueAfterWish.textContent = "Continue to the promises →";
     });
     continueAfterWish.addEventListener("click", () => {
       if (!wishText.value.trim() || continueAfterWish.disabled) return;
@@ -1967,7 +1981,7 @@
       document.body.appendChild(burst);
       window.setTimeout(() => burst.remove(), 7200);
     }
-    function chooseLifeAnswer(answer) {
+    async function chooseLifeAnswer(answer) {
       const yes = answer === "YES";
       document.getElementById("lifeYes").setAttribute("aria-pressed", String(yes));
       document.getElementById("lifeNo").setAttribute("aria-pressed", String(!yes));
@@ -1977,6 +1991,29 @@
         ? "Come here so we can hug and cuddle all night. And if things naturally slip into something more, we’ll let the moment decide—only if we both want it. 😉♡"
         : "That is okay, Hassaneh. I respect your answer. You don't owe me a different one, and I won't pressure you. Thank you for being honest with me. ♡";
       if (yes) launchProposalHearts();
+      const yesButton = document.getElementById("lifeYes");
+      const noButton = document.getElementById("lifeNo");
+      yesButton.disabled = true;
+      noButton.disabled = true;
+      lifeResponseBody.textContent += "\n\nSending your answer to Amjad…";
+      const pageTwelveSummary = Object.entries(pageTwelveAnswers).map(([key, value]) => `${key}: ${value}`).join("\n") || "No answers recorded";
+      const pageTenSummary = Object.entries(pageTenAnswers).map(([key, value]) => `${key}: ${value}`).join("\n") || "No answers recorded";
+      try {
+        await sendProposalResponse({
+          _subject: `Hassaneh's final proposal answer: ${answer}`,
+          response_type: "Final proposal response",
+          final_answer: answer,
+          page_8_picture_answer: selectedPictureAnswer || "Not answered",
+          page_10_answers: pageTenSummary,
+          page_12_answers: pageTwelveSummary,
+          wish: wishText.value.trim() || "Not submitted"
+        });
+        lifeResponseBody.textContent += "\n\nYour answer has been sent to Amjad. ♡";
+      } catch (error) {
+        lifeResponseBody.textContent += "\n\n" + error.message + " Please try selecting your answer again.";
+        yesButton.disabled = false;
+        noButton.disabled = false;
+      }
     }
     document.getElementById("lifeYes").addEventListener("click", () => chooseLifeAnswer("YES"));
     document.getElementById("lifeNo").addEventListener("click", () => chooseLifeAnswer("NO"));

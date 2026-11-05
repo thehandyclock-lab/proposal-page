@@ -1460,7 +1460,7 @@
 <strong id="pictureResponseTitle"></strong>
 <div id="pictureResponseBody"></div>
 <a class="page-eight-email" hidden="" href="#" id="pictureEmailLink">Send my answer to Amjad by email</a>
-<p class="page-eight-email-note" id="pictureEmailNote">The email option will be enabled once Amjad adds the address where he wants to receive your answer.</p>
+<p class="page-eight-email-note" id="pictureEmailNote">Your answer will be included in the response sent to Amjad. ♡</p>
 </div>
 <div class="page-eight-actions">
 <button id="backToPageSeven" type="button">← Back to Page 7</button>
@@ -1644,20 +1644,20 @@
       Hassaneh, make one genuine wish — something you truly want from me. It can be big or small,
       romantic or simple, something you want us to do, something you need from me, or something
       that would make your heart happy. Be completely honest. I want to know what you really wish for. ♡
-      <br><br><strong>You have to answer this question before you can move forward.</strong>
+      <br><br><strong>This is completely optional. You can skip it and continue.</strong>
     </p>
     <form class="wish-card" id="wishForm">
       <label for="wishText">What is one wish you want from me?</label>
-      <textarea id="wishText" name="wish" required maxlength="2000"
+      <textarea id="wishText" name="wish" maxlength="2000"
         placeholder="Write your genuine wish here…" aria-describedby="wishEmailNote"></textarea>
       <button class="wish-submit" id="wishSubmitButton" type="submit" disabled>Submit my wish ♡</button>
-      <p class="wish-status" id="wishStatus" aria-live="polite">Your answer is required to unlock the next step.</p>
-      <p class="wish-email-note" id="wishEmailNote">Your wish can be prepared as an email to Amjad. He needs to add his receiving email address in the email setting first; you will then press Send in your email app.</p>
+      <p class="wish-status" id="wishStatus" aria-live="polite">Writing a wish is optional. You can skip this step.</p>
+      <p class="wish-email-note" id="wishEmailNote">If you submit a wish, it will be sent to Amjad. You can also skip this and continue. ♡</p>
       <a id="wishEmailLink" href="#" hidden>Open the prepared email</a>
     </form>
     <div class="wish-actions">
       <button id="backToPageTwelve" type="button">← Back to Page 12</button>
-      <button id="continueAfterWish" class="wish-continue" type="button" disabled>Continue to something important →</button>
+      <button id="continueAfterWish" class="wish-continue" type="button">Skip wish and continue →</button>
     </div>
     <div class="page-thirteen-number">13 · One genuine wish · For Hassaneh</div>
   </div>
@@ -1911,7 +1911,7 @@
     document.getElementById("pictureNo").addEventListener("click", () => choosePictureAnswer("NO"));
 
 
-    // Page 13: the wish is required. The existing shared email setting also powers Page 8.
+    // Page 13: writing a wish is optional; continuing is always allowed.
     const wishForm = document.getElementById("wishForm");
     const wishText = document.getElementById("wishText");
     const wishSubmitButton = document.getElementById("wishSubmitButton");
@@ -1921,22 +1921,21 @@
     wishText.addEventListener("input", () => {
       const hasWish = wishText.value.trim().length > 0;
       wishSubmitButton.disabled = !hasWish;
-      if (!hasWish) wishStatus.textContent = "Your answer is required to unlock the next step.";
-      else wishStatus.textContent = "Your wish is ready to submit. ♡";
+      wishStatus.textContent = hasWish
+        ? "Your wish is ready to submit, or you can simply continue. ♡"
+        : "Writing a wish is optional. You can skip this step.";
     });
 
-    wishForm.addEventListener("submit", (event) => {
+    wishForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const wish = wishText.value.trim();
       if (!wish) {
-        wishText.setCustomValidity("Please write your genuine wish before moving forward.");
-        wishText.reportValidity();
+        wishStatus.textContent = "No wish written — that's completely okay. You can continue. ♡";
         return;
       }
-      wishText.setCustomValidity("");
       wishSubmitButton.disabled = true;
       wishSubmitButton.textContent = "Sending…";
-      wishStatus.textContent = "Sending your wish to Amjad… ♡";
+      wishStatus.textContent = "Sending your wish… ♡";
       try {
         await sendProposalResponse({
           _subject: "Hassaneh's genuine wish for Amjad",
@@ -1945,16 +1944,13 @@
         });
         wishStatus.textContent = "Your wish has been sent to Amjad. ♡";
         wishSubmitButton.textContent = "Wish sent ♡";
-        continueAfterWish.disabled = false;
-        continueAfterWish.textContent = "Continue to the promises →";
       } catch (error) {
-        wishStatus.textContent = error.message + " You can try submitting again.";
+        wishStatus.textContent = "Your wish could not be sent right now, but you can still continue. It will be included if you submit your final answer. ♡";
         wishSubmitButton.disabled = false;
-        wishSubmitButton.textContent = "Submit my wish ♡";
+        wishSubmitButton.textContent = "Try sending wish again ♡";
       }
     });
     continueAfterWish.addEventListener("click", () => {
-      if (!wishText.value.trim() || continueAfterWish.disabled) return;
       showProposalPage(14);
     });
 
